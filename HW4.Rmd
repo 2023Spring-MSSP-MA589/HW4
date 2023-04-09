@@ -1,0 +1,58 @@
+---
+title: "HW4"
+author: "Tianjian Xie"
+date: "2023-04-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**##Ans1:**\
+(a): Since$Y_{i,j} \mathop{\sim}\limits^{iid}Ber(\frac{e^{\theta_{z_i,z_j}+\beta X_{i,j}}}{1+e^{\theta_{z_i,z_j}+\beta X_{i,j}}}), i < j$, We can see that the negative log likelihood is\
+$f(\beta,\theta)=-p(1-p)=\ -log \mathop{\sum}\limits_{j<i:Y_{ij}=1}(\frac{e^{\theta_{z_i,z_j}+\beta X_{i,j}}}{1+e^{\theta_{z_i,z_j}+\beta X_{i,j}}})-log\mathop{\sum}\limits_{j<i:Y_{ij}=1}(\frac{1}{1+e^{\theta_{z_i,z_j}+\beta X_{i,j}}})$  $= -\mathop{\sum}\limits_{j<i:Y_{ij}=1}[log(e^{\theta_{z_i,z_j}+\beta X_{i,j}})-log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})]-\mathop{\sum}\limits_{j<i:Y_{ij}=0}[log(1)-log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})]$  $= -\mathop{\sum}\limits_{j<i:Y_{ij}=1}[(\theta_{z_i,z_j}+\beta X_{i,j})-log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})]+\mathop{\sum}\limits_{j<i:Y_{ij}=0}log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})$\
+\
+(b):
+
+**##Ans2:**\
+(a): By the idea of rejection algorithm, since f(x) is complex and hard to sample, we were gave a Gamma distribution $Ga(2,\beta)$, with density $xe^{-\beta x}/C_g$ called g, we can see that the graph of the density in the same domain of f has the similar shape as below. Since $\mathop{\sum}\limits_{i=1}^{10}(x-m_i)^2$ is always greater than 0, $exp(-\beta x - \mathop{\sum}\limits_{i=1}^{10}(x-m_i)^2)$ is always smaller than $exp(-\beta x)$.
+```{r echo=FALSE}
+# x <- seq(from=0,to=20,by=0.01)
+# y <- x*exp(-x)
+# plot(y)
+x <- seq(from=0,to=20,by=0.01)
+curve(x*exp(-x),0,20)
+``` 
+So by the rejection algorithm, first step is to find a constant M, such that for all x in the domain of f, f(x) is smaller or equal to Mg(x). Next is to draw X from domain of density g, and Y based on X from $U(0,Mg(X))$, such that (X,Y) are uniform under the curve Mg. If $Y \leq f(X)$, stop and return X. Otherwise, reject the Y and repeat the previous step. \
+\
+(b):
+```{r}
+m <- c(2.16, 0.74, 1.87, 3.03, 3.11, 2.74, 1.23, 3.64, 1.57, 2.12)
+beta <- 0.5
+C_g <- beta / gamma(2)
+set.seed(1234)
+rejectAlgo <- function(n) {
+  numn <- numeric(n)
+  i <- 0
+  while (i < n) {
+    x <- rgamma(1, shape = 2, rate = 0.5)
+    ratio <- exp(-0.5*sum((x-m)^2))/x
+    if (runif(1) < ratio) {
+      numn[i+1] <- x
+      i <- i + 1
+    }
+  }
+  return(numn)
+}
+```
+
+(c):
+```{r}
+n <- 1000
+X <- rejectAlgo(n)
+I <- mean(X)
+I
+se <- sd(x) / sqrt(n)
+se
+```
