@@ -55,4 +55,8 @@ I <- mean(X)
 I
 se <- sd(x) / sqrt(n)
 se
+Upper_bound <- I + 1.96 * se
+Lower_bound <- I - 1.96 * se
+CI95 <- c(Lower_bound,Upper_bound)
+cat("The 95% CI is: ",c(CI95))
 ```
