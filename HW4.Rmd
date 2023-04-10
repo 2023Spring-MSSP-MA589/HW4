@@ -7,13 +7,73 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(lavaSearch2)
 ```
 
 **##Ans1:**\
 (a): Since$Y_{i,j} \mathop{\sim}\limits^{iid}Ber(\frac{e^{\theta_{z_i,z_j}+\beta X_{i,j}}}{1+e^{\theta_{z_i,z_j}+\beta X_{i,j}}}), i < j$, We can see that the negative log likelihood is\
 $f(\beta,\theta)=-p(1-p)=\ -log \mathop{\sum}\limits_{j<i:Y_{ij}=1}(\frac{e^{\theta_{z_i,z_j}+\beta X_{i,j}}}{1+e^{\theta_{z_i,z_j}+\beta X_{i,j}}})-log\mathop{\sum}\limits_{j<i:Y_{ij}=1}(\frac{1}{1+e^{\theta_{z_i,z_j}+\beta X_{i,j}}})$  $= -\mathop{\sum}\limits_{j<i:Y_{ij}=1}[log(e^{\theta_{z_i,z_j}+\beta X_{i,j}})-log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})]-\mathop{\sum}\limits_{j<i:Y_{ij}=0}[log(1)-log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})]$  $= -\mathop{\sum}\limits_{j<i:Y_{ij}=1}[(\theta_{z_i,z_j}+\beta X_{i,j})-log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})]+\mathop{\sum}\limits_{j<i:Y_{ij}=0}log(1+e^{\theta_{z_i,z_j}+\beta X_{i,j}})$\
 \
-(b):
+(b): In this case we only care about when $Y_{ij}=0$, otherwise it's 0.\
+\
+(c):
+```{r warning=FALSE}
+theta <- matrix(c(0.0, -4.5, -1.4, -2.2, -4.5, 0.0, -2.2, -1.4, -1.4, -2.2, 0.0, -1.4, -2.2, -1.4, -1.4, 0.0),
+                nrow = 4, ncol = 4)
+beta <- 0.1
+X <- matrix(rbinom(4^2, 1, 0.5), nrow = 4, ncol = 4)
+X <- lavaSearch2:::symmetrize(X,update.upper=TRUE)
+z <- sample(1:4, 100, replace = TRUE)
+max_iter <- 100
+step_size <- 1
+Y <- matrix(0, nrow = 100, ncol = 100)
+  for (k in 1:4) {
+    idx_k <- which(z == k)
+    for (l in k:4) {
+      idx_l <- which(z == l)
+      Y[idx_k, idx_l] <- rbinom(length(idx_k)*length(idx_l), 1, exp(theta[k,l] + beta*X[k,l])/(1 + exp(theta[k,l] + beta*X[k,l])))
+      Y[idx_l, idx_k] <- Y[idx_k, idx_l]
+    }
+  }
+  diag(Y) <- 0
+gradient_descent <- function(Y, z, theta, beta, X, step_size, max_iter) {
+  n <- nrow(Y)
+  A <- matrix(0, n, n)
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      A[i,j] <- A[j,i] <- exp(theta[z[i],z[j]] + beta*X[z[i],z[j]])
+    }
+  }
+    theta_hat <- matrix(0, nrow(theta), ncol(theta))
+  
+  for (t in 1:max_iter) {
+    gradient <- matrix(0, nrow(theta), ncol(theta))
+    for (i in 1:(n-1)) {
+      for (j in (i+1):n) {
+        p <- exp(theta[z[i],z[j]] + beta*X[z[i],z[j]]) / (1 + exp(theta[z[i],z[j]] + beta*X[z[i],z[j]]))
+        gradient[z[i],z[j]] <- gradient[z[i],z[j]] + (Y[i,j] - p)
+        gradient[z[j],z[i]] <- gradient[z[j],z[i]] + (Y[j,i] - p)
+      }
+    }
+    
+    theta_hat <- theta_hat + step_size * gradient
+    
+    theta_hat <- (theta_hat + t(apply(theta_hat, 2, rev))) / 2
+    
+    obj <- 0
+    for (i in 1:(n-1)) {
+      for (j in (i+1):n) {
+        obj <- obj + (Y[i,j] * log(A[i,j]) + (1 - Y[i,j]) * log(1 - A[i,j]))
+      }
+    }
+    obj <- obj - sum(theta * theta_hat) + (1 / (2*beta)) * sum(X * (theta_hat %*% theta_hat))
+    # print(paste0("Iteration ", t, " - Objective value: ", obj))
+  }
+  return(theta_hat)
+}
+gradient_descent(Y, z, theta, beta, X, step_size, max_iter)
+```
+\
 
 **##Ans2:**\
 (a): By the idea of rejection algorithm, since f(x) is complex and hard to sample, we were gave a Gamma distribution $Ga(2,\beta)$, with density $xe^{-\beta x}/C_g$ called g, we can see that the graph of the density in the same domain of f has the similar shape as below. Since $\mathop{\sum}\limits_{i=1}^{10}(x-m_i)^2$ is always greater than 0, $exp(-\beta x - \mathop{\sum}\limits_{i=1}^{10}(x-m_i)^2)$ is always smaller than $exp(-\beta x)$.
@@ -30,7 +90,7 @@ So by the rejection algorithm, first step is to find a constant M, such that for
 ```{r}
 m <- c(2.16, 0.74, 1.87, 3.03, 3.11, 2.74, 1.23, 3.64, 1.57, 2.12)
 beta <- 0.5
-C_g <- beta / gamma(2)
+C_g <- beta^2 / gamma(2)
 set.seed(1234)
 rejectAlgo <- function(n) {
   numn <- numeric(n)
@@ -46,7 +106,7 @@ rejectAlgo <- function(n) {
   return(numn)
 }
 ```
-
+\
 (c):
 ```{r}
 n <- 1000
@@ -59,4 +119,6 @@ Upper_bound <- I + 1.96 * se
 Lower_bound <- I - 1.96 * se
 CI95 <- c(Lower_bound,Upper_bound)
 cat("The 95% CI is: ",c(CI95))
+barplot(X)
 ```
+\
